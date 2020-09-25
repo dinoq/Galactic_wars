@@ -1,4 +1,12 @@
 
 #canvas{
-    background-color: rgb(39, 196, 196);
+    background-color: rgb(134, 134, 134);
+}
+
+body{
+    margin: 0;
+}
+
+canvas{
+    cursor: none;
 }
