@@ -4,9 +4,9 @@ const BOMB = 10;
 
 
 class Missile{//střela
-    constructor(pos,angle,speed, player, attackedTarget, src){
+    constructor(pos,speed, player, attackedTarget, strength, src){
         this.pos = pos.getCopyOfPos();
-        this.imgPosition = null;
+        this.imgPos = null;
         this.triangle = new Triangle(this.pos, attackedTarget.pos);
         this.angle = this.triangle.angleA;
         this.speed = speed;
@@ -15,18 +15,23 @@ class Missile{//střela
         this.deltaX = 0;
         this.deltaY = 0;
         this.attackedPos = new Position(attackedTarget.pos.x, attackedTarget.pos.y);
-        console.log("UHEL TRIANGLE: " + new Triangle(this.pos, this.attackedPos).angleA);
-        console.log("UHEL consturctor: " + angle);
         this.img = new Image();
         this.imgLoaded = false;
         this.img.src = "img/" + src;
         var missile = this;
+        this.lifeTime = 0;
+        this.strength = strength;
         this.img.onload = function(){
             missile.imgLoaded = true;
             missile.dim = new Dimension(missile.img.width/2, missile.img.height/2);
-            missile.imgPos = new Position(x - this.dim.w/2, y - this.dim.h/2);
+            missile.imgPos = new Position(missile.pos.x - missile.dim.w/2, missile.pos.y - missile.dim.h/2);
         }
 
+    }
+
+    updateImgPos(){
+        this.imgPos.x = this.pos.x - this.dim.w/2;
+        this.imgPos.y = this.pos.y - this.dim.h/2;
     }
 
     updateDeltas(){
@@ -40,8 +45,11 @@ class Missile{//střela
             this.deltaY = -this.deltaY;
         }
     }
-    update(progress){
-        
+    update(progress){        
+        if(!this.imgLoaded){
+            return;
+        }
+        //return;
         //console.log("BUL222:"+this.angle);
         if(this.deltaX == 0 || this.deltaY == 0){
             this.updateDeltas();
@@ -49,17 +57,14 @@ class Missile{//střela
         //this.pos.x += (this.deltaX * progress/16);
         //this.pos.y += (this.deltaY* progress/16);
         this.pos = this.triangle.getNewPosBySpeed(this.speed);
+        this.updateImgPos();
         this.triangle.pos1 = this.pos;
-        return;
-        for(let i = 0; i < game.ships.length; i++){
-            if(game.ships[i].player.relation == ENEMY){
-                if(game.ships[i].boundaries.containsPoint(this.pos)){
-                    game.ships.splice(i, 1);
-                    return true;
-                }
-            }
+        
+        this.lifeTime += progress;
+        if(this.lifeTime > 1000){//every second
+            this.lifeTime = 0;
+            this.strength *= 0.9;
         }
-        return true;
     }
 
     draw(ctx){
@@ -73,8 +78,8 @@ class Missile{//střela
 }
 
 class Bullet extends Missile{//kulka
-    constructor(pos,angle,speed, player, attackedTarget){
-        super(pos,angle,speed, player, attackedTarget, "bullet.png");
+    constructor(pos,speed, player, attackedTarget, strength){
+        super(pos,speed, player, attackedTarget, strength, "bullet.png");
     }
     
     update(progress){

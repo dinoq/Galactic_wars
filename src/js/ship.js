@@ -1,6 +1,7 @@
 
 class Ship{
     constructor(x, y, player = null){
+        this.player = player;
         this.id = game.ships.length;
         this.showId = true;
         this.imgPos = new Position(x, y);
@@ -8,30 +9,36 @@ class Ship{
         this.pos = new Position(x + this.dim.w/2, y + this.dim.h/2);
         this.field = game.getFieldFromXY(this.pos.x, this.pos.y);        
         this.field.settledByShip = this;
-        this.temporaryTargetField = this.field;
-        this.targetField = this.field;
+        this.temporaryFieldTarget = this.field;
+        this.fieldTarget = this.field;
+
         this.img = new Image();
         this.img_loaded = false;
         let img_src = "s3.png";//"ship.png";
         this.img.src = "img/" + img_src;
+
         this.angleTarget = 0;
         this.angle = 0;
-        this.canFire = true;
         this.accelerationSpeed = 6;
         this.angleSpeed = 4;
-        this.bulletSpeed = 10;
+
         this.health = 90;
         this.maxHealth = 100;
         this.showHealth = false;
         this.boundaries = new GameRectangle(this.imgPos,this.dim);
+        this.canFire = true;
         this.scope = 7;
         this.range = 300;
         this.attacking = false;
         this.attackedTarget = null;
-        this.player = player;
+        this.missileSpeed = 10;
+        this.missileStrength = 5;
+        
         this.moving = false;
         var ship_object = this;
         this.missileArray = new Array();
+
+        this.targetOfShipsArray = new Array();
 
         this.img.onload = function() {
             ship_object.img_loaded = true;
@@ -46,94 +53,48 @@ class Ship{
             this.fire(BULLET);
         }
         if(this.angle != this.angleTarget){//First rotate
-            let direction = -1;
-            let fullangle = false;
-            if(this.angleTarget > this.angle){  
-                if((this.angleTarget - this.angle) < (360 - this.angleTarget + this.angle)){
-                    direction = 1;
-                }else{
-                    direction = -1;
+            this.rotateToTargetAngle(this.angleTarget, progress);
+        }else if(!this.pos.equal(this.temporaryFieldTarget.centerPos)){//If not on right position...
+            if(this.field.isNeighbor(this.temporaryFieldTarget)){//If close to right position
+                if(this.temporaryFieldTarget.isSettled()){
+                    this.moveTo(this.fieldTarget.findNearestField(this.field));
                 }
-            }else{
-                if((this.angle - this.angleTarget) < (360 - this.angle + this.angleTarget)){
-                    direction = -1;
-                }else{
-                    direction = 1;
-                }
-            }
-
-            if(direction == 1){
-                if(this.angleTarget > this.angle){
-                    if(this.angle + this.angleSpeed < this.angleTarget){
-                        fullangle = true;
-                    }
-                }else{
-                    if(-360 + this.angle + this.angleSpeed < this.angleTarget){
-                        fullangle = true;
-                    }
-                }
-            }else{
-                if(this.angleTarget > this.angle){
-                    if(360 + this.angle - this.angleSpeed > this.angleTarget){
-                        fullangle = true;
-                    }
-                }else{
-                    if(this.angle - this.angleSpeed > this.angleTarget){
-                        fullangle = true;
-                    }
-                }
-            }
-            if(fullangle){
-                this.angle += (direction * this.angleSpeed);
-            }else{
-                this.angle = this.angleTarget;
-                //console.log(fullangle);
             }
             
-            if(this.angle > 360){
-                this.angle = this.angle % 360;
-            }
-        }else if(!this.pos.equal(this.temporaryTargetField.centerPos)){//If not on right position...
-            //console.log("this.field.getFieldX"+this.field.getFieldX() + " "+this.field.getFieldY());
-            if(this.field.isNeighbor(this.temporaryTargetField)){//If close to right position
-                //console.log("nejbrrrrrrr??????");
-                if(this.temporaryTargetField.isSettled()){
-                    //this.moveTo(game.getFieldFromPos(this.targetField.findNearestFiedlPos(this.angle)));
-                    this.moveTo(this.targetField.findNearestField(this.field));
-                    //console.log("presmerovavam(" + this.id + "): ");
-                    //this.targetField.printFieldShiftedXY();
-                    //console.log("NEW : this.field.getFieldX"+this.targetField.getFieldX() + " "+this.targetField.getFieldY());
-                }
-            }else{
-                
-
-            }
-            this.pos = new Triangle(this.pos, this.temporaryTargetField.centerPos).getNewPosBySpeed(this.accelerationSpeed);
+            this.pos = new Triangle(this.pos, this.temporaryFieldTarget.centerPos).getNewPosBySpeed(this.accelerationSpeed);
             this.imgPos = this.getImgPos();
             this.boundaries.moveToPos(this.imgPos);
             if(!this.field.shipStillOnField(this)){
                 this.field = game.getFieldFromXY(this.pos.x, this.pos.y);
                 //console.log(this.field.settledByShip);
-                if(this.field == this.temporaryTargetField){
+                if(this.field == this.temporaryFieldTarget){
                     //console.log("hotovo" + this.field.pos.x + " "+this.field.pos.y+ " B" + this.field.settledByShip);
                     this.moving=false;
                     //console.log("settld?" + this.field.settledByShip);
                     this.field.settledByShip = this;
-                    console.log("obsazeno na:");
-                    this.field.printFieldShiftedXY();
+                    //asd
                 }
+            }
+
+            if(this.pos.equal(this.temporaryFieldTarget.centerPos)){//position updated - so on exactly right position                        
+                if(this.temporaryFieldTarget != this.fieldTarget){//set final rotation to target...
+                    this.angleTarget = new Triangle(this.pos, this.fieldTarget.centerPos).angleA; 
+                }
+
             }
             
         }else{
             if(this.id == 0){//only for testing
             }
             if(this.field.isSettled() && this.field.settledByShip != this){
-                this.moveTo(this.targetField.findNearestField(this.field));
+                this.moveTo(this.fieldTarget.findNearestField(this.field));
                 console.log("jsem na obsazenem a proto presmerovavam(" + this.id + "): ");
-                this.targetField.printFieldShiftedXY();
-            }else if(this.field.isEmpty()){
-                this.moving=false;
-                this.field.settledByShip = this;
+                this.fieldTarget.printFieldShiftedXY();
+            }else{
+                if(this.field.isEmpty()){
+                    this.moving=false;
+                    this.field.settledByShip = this;
+                }
             }
         }
         for(let i = 0; i < this.missileArray.length; i++){
@@ -142,8 +103,9 @@ class Ship{
                 //this.missileArray.splice(i, 1);
             //}
             this.missileArray[i].update(progress);
-            if(this.attackedTarget.boundaries.containsPoint(this.missileArray[i].pos)){
-                console.log("truuuuuuu" + this.attackedTarget.id);
+            if(this.attackedTarget != null && this.attackedTarget.boundaries.containsPoint(this.missileArray[i].pos)){
+                this.attackedTarget.reduceHealth(this.missileArray[i].strength);
+                this.missileArray.splice(i,1);
             }
         }
     }
@@ -185,7 +147,7 @@ class Ship{
         ctx.arc(this.pos.x, this.pos.y, this.scope, 0, 2 * Math.PI);
         ctx.fill();
 
-        if(this.showHealth){
+        if(this.showHealth || this.targetOfShipsArray.length > 0){
             let healthBarHeight = 5;
             let healthZoom = 0.5;
             ctx.fillStyle = "red";
@@ -193,6 +155,8 @@ class Ship{
             ctx.fillStyle = "green";
             ctx.fillRect(this.pos.x-this.dim.w/(2/healthZoom),this.pos.y, this.health*healthZoom, healthBarHeight);
         }
+
+        
 
         for(let i = 0; i < this.missileArray.length; i++){
             this.missileArray[i].draw(game.ctx);
@@ -206,16 +170,27 @@ class Ship{
         }
     }
 
+    reduceHealth(amount){
+        this.health -= amount;
+        if(this.health <= 0){
+            game.ships.splice(this.id, 1);
+            for(let i = 0; i < this.targetOfShipsArray.length; i++){
+                this.targetOfShipsArray[i].attackedTarget = null;
+                this.targetOfShipsArray[i].attacking = false;
+            }
+        }
+    }
+
     fire(missile_type){
         if(this.canFire){
-            console.log("FIRING!");
+            //console.log("FIRING!");
             let missile = null;
             switch(missile_type){
                 case BULLET:
-                    missile = new Bullet(this.pos,this.angle, this.bulletSpeed,this.player, this.attackedTarget);
+                    missile = new Bullet(this.pos, this.missileSpeed,this.player, this.attackedTarget, this.missileStrength);
                     break;
                 default:
-                    missile = new Bullet(this.pos,this.angle, this.bulletSpeed,this.player, this.attackedTarget);
+                    missile = new Bullet(this.pos, this.missileSpeed,this.player, this.attackedTarget, this.missileStrength);
                     break;
             }
             
@@ -223,7 +198,7 @@ class Ship{
             this.canFire = false;
             setTimeout(this.recharge, 2000, this);
         }else{
-            console.log("CANNOT FIRE!");
+            //console.log("CANNOT FIRE!");
         }
     }
 
@@ -237,23 +212,75 @@ class Ship{
         }else{
 
         }
-        this.temporaryTargetField = field;
-        let t = new Triangle(this.pos, this.temporaryTargetField.centerPos);
-        if(this.temporaryTargetField != this.field){
+        this.temporaryFieldTarget = field;
+        let t = new Triangle(this.pos, this.temporaryFieldTarget.centerPos);
+        if(this.temporaryFieldTarget != this.field){
             this.angleTarget = t.angleA;
+        }else{//otaceni na miste pokud se zastavi a klikne se na vedlejsi obsazene misto
         }
-        if(this.field != this.temporaryTargetField && this.field.settledByShip == this){
+        if(this.field != this.temporaryFieldTarget && this.field.settledByShip == this){
             this.moving = true;
             this.field.removeTargetShip();
         }
     }
 
     changeTargetAndMove(field){
-        this.targetField = field;
+        this.fieldTarget = field;
         this.moveTo(field);
 
     }
 
+    rotateToTargetAngle(angleTarg, progress){
+        let direction = -1;
+        let fullangle = false;
+        if(angleTarg > this.angle){  
+            if((angleTarg - this.angle) < (360 - angleTarg + this.angle)){
+                direction = 1;
+            }else{
+                direction = -1;
+            }
+        }else{
+            if((this.angle - angleTarg) < (360 - this.angle + angleTarg)){
+                direction = -1;
+            }else{
+                direction = 1;
+            }
+        }
+
+        if(direction == 1){
+            if(angleTarg > this.angle){
+                if(this.angle + this.angleSpeed < angleTarg){
+                    fullangle = true;
+                }
+            }else{
+                if(-360 + this.angle + this.angleSpeed < angleTarg){
+                    fullangle = true;
+                }
+            }
+        }else{
+            if(angleTarg > this.angle){
+                if(360 + this.angle - this.angleSpeed > angleTarg){
+                    fullangle = true;
+                }
+            }else{
+                if(this.angle - this.angleSpeed > angleTarg){
+                    fullangle = true;
+                }
+            }
+        }
+        if(fullangle){
+            this.angle += (direction * this.angleSpeed);
+        }else{
+            this.angle = angleTarg;
+            //console.log("NOTfull angle");
+        }
+        
+        if(this.angle > 360){
+            this.angle = this.angle % 360;
+        }
+
+    }
+    
     getImgPos(){
         return new Position(parseInt(this.pos.x - this.dim.w/2),parseInt(this.pos.y - this.dim.h/2));
     }

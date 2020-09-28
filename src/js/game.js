@@ -31,7 +31,9 @@ class Game{
         this.eventHandler = new GameEventHandler(canvas);
         this.selectionRect = new SelectionRectangle();
         this.fps = 0;
+        this.player = new Player(ME);
         this.players = new Array();
+        this.players.push(this.player);
         this.ships = new Array();
         this.selectedShips = new Array();
         this.cycleCounter = 0;
@@ -45,9 +47,11 @@ class Game{
 
         this.fields = new Array();
         this.field_size = 100;
-        this.fields_width = 10;
-        this.fields_height = 10;
+        this.fields_width = 20;
+        this.fields_height = 200;
         this.initFields();
+
+        this.resBar = new ResourcesBar(this.player);
 
     }
 
@@ -77,18 +81,16 @@ class Game{
     }
 
     start(){
-        let p1 = new Player(ME);
         let p2 = new Player(ENEMY);
         let p3 = new Player(FRIEND);
-        this.players.push(p1);
         this.players.push(p2);
         this.players.push(p3);
-        this.ships.push(new Ship(250, 250, p1));
-        this.ships.push(new Ship(500, 50, p1));
-        this.ships.push(new Ship(400, 500, p1));
+        this.ships.push(new Ship(250, 250, this.player));
+        this.ships.push(new Ship(500, 50, this.player));
+        this.ships.push(new Ship(400, 500, this.player));
         this.ships.push(new Ship(320, 300, p2));//a dal ma byt p2
         this.ships.push(new Ship(400, 100, p3));
-        this.ships.push(new Ship(800, 400, p1));
+        this.ships.push(new Ship(800, 400, this.player));
         window.requestAnimationFrame(this.loop);
     }
 
@@ -128,6 +130,8 @@ class Game{
             let curZoom = 2;    
             this.ctx.drawImage(this.cursors[this.cursorType], this.eventHandler.mouseX, this.eventHandler.mouseY, 80/curZoom, 80/curZoom); 
         }
+
+        this.resBar.draw(this.ctx);
     }
 
     loop(timestamp) {
@@ -196,10 +200,16 @@ class Game{
             if(this.cursorType == SWORD){
                 this.selectedShips[i].attacking = true;
                 this.selectedShips[i].attackedTarget = attackedTarget;
+                attackedTarget.targetOfShipsArray.push(this.selectedShips[i]);
             }else{
-                
-                this.selectedShips[i].attacking = false;
-                this.selectedShips[i].attackedTarget = null;
+                if(this.selectedShips[i].attackedTarget != null){
+                    let index = this.selectedShips[i].attackedTarget.targetOfShipsArray.indexOf(this.selectedShips[i]);
+                    if(index !== -1) {
+                        this.selectedShips[i].attackedTarget.targetOfShipsArray.splice(index, 1);
+                    }
+                    this.selectedShips[i].attacking = false;
+                    this.selectedShips[i].attackedTarget = null;
+                }
             }
         }
     }
@@ -290,6 +300,9 @@ class Game{
 /*
 Zapojit do update progress
 draw používat přes ctx (bez game.)
-vytvořit temporaryTargetAngle u Ship
+
+todo priority:
+fullscreen btn
+přesun po mapě
 
 */
