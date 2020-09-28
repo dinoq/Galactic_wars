@@ -5,6 +5,17 @@ lastRender = 0
 game = null;
 
 
+document.addEventListener("focus", this.onElementFocused, true);
+function onElementFocused(e)
+{
+if (e && e.target)
+    document.activeElement = e.target == document.body ? null : e.target;
+    console.log("----");
+    console.log(e.target);
+    console.log(document.activeElement);
+    console.log("....");
+} 
+
 function startGame() {
     game = new Game();
     game.start();
@@ -13,6 +24,7 @@ function startGame() {
 class Game{
     constructor(){
         this.canvas = document.getElementById("canvas");
+        this.canvas.focus();
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.ctx = this.canvas.getContext("2d");
@@ -98,7 +110,7 @@ class Game{
         }
         this.ctx.clearRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
         for(let i = 0; i < this.fields.length; i++){
-            this.fields[i].draw(game.ctx);
+            this.fields[i].draw(this.ctx);
         }
 
         let f_size = 12;
@@ -108,7 +120,7 @@ class Game{
         
         let i = 0;
         for(; i < this.ships.length; i++){
-            this.ships[i].draw();
+            this.ships[i].draw(this.ctx);
         }
         this.selectionRect.draw(this.ctx);
         
@@ -143,12 +155,51 @@ class Game{
         return null;
     }
 
+    selectAll(){
+        for(let i = 0; i < this.ships.length; i++){
+            if(this.ships[i].player.relation == ME){
+                this.selectedShips.push(this.ships[i]);
+            }
+        }
+        if(this.selectedShips.length > 0){
+            for(let i = 0; i < this.selectedShips.length; i++ ){
+                this.selectedShips[i].showHealth = true;
+            }
+        }
+    }
+
+    printSettledFieldsByMe(){
+        for(let i = 0; i < this.fields.length; i++ ){
+            if(this.fields[i].isSettled()){
+                if(this.fields[i].settledByShip.player.relation != ME){
+                    continue;
+                }
+                console.log("Ship: " + this.fields[i].settledByShip.id + ":");
+                this.fields[i].printFieldShiftedXY();
+            }
+        }
+    }
     //events
     rightClick(event) {
-        for(let i = 0; i < this.selectedShips.length; i++ ){
-            this.selectedShips[i].moveTo(this.getFieldFromXY(this.eventHandler.mouseX, this.eventHandler.mouseY));
+        let attackedTarget = null;
+        //Are selected ships firing?
+        for(let i = 0; i < this.ships.length; i++){
+            if(this.ships[i].player.relation == ENEMY){
+                if(this.selectedShips.length > 0 && this.ships[i].boundaries.containsPoint(new Position(this.eventHandler.mouseX, this.eventHandler.mouseY))){
+                    attackedTarget = this.ships[i];
+                }
+            }
+        }
+        for(let i = 0; i < this.selectedShips.length; i++){
+            //this.selectedShips[i].moveTo(this.getFieldFromXY(this.eventHandler.mouseX, this.eventHandler.mouseY));
+            this.selectedShips[i].changeTargetAndMove(this.getFieldFromXY(this.eventHandler.mouseX, this.eventHandler.mouseY));
             if(this.cursorType == SWORD){
                 this.selectedShips[i].attacking = true;
+                this.selectedShips[i].attackedTarget = attackedTarget;
+            }else{
+                
+                this.selectedShips[i].attacking = false;
+                this.selectedShips[i].attackedTarget = null;
             }
         }
     }
@@ -239,5 +290,6 @@ class Game{
 /*
 Zapojit do update progress
 draw používat přes ctx (bez game.)
+vytvořit temporaryTargetAngle u Ship
 
 */

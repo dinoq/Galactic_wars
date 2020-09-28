@@ -1,11 +1,14 @@
 
 class Ship{
     constructor(x, y, player = null){
-        this.imgPosition = new Position(x, y);
+        this.id = game.ships.length;
+        this.showId = true;
+        this.imgPos = new Position(x, y);
         this.dim = new Dimension(99, 98);
         this.pos = new Position(x + this.dim.w/2, y + this.dim.h/2);
         this.field = game.getFieldFromXY(this.pos.x, this.pos.y);        
         this.field.settledByShip = this;
+        this.temporaryTargetField = this.field;
         this.targetField = this.field;
         this.img = new Image();
         this.img_loaded = false;
@@ -20,7 +23,7 @@ class Ship{
         this.health = 90;
         this.maxHealth = 100;
         this.showHealth = false;
-        this.boundaries = new GameRectangle(this.imgPosition,this.dim);
+        this.boundaries = new GameRectangle(this.imgPos,this.dim);
         this.scope = 7;
         this.range = 300;
         this.attacking = false;
@@ -37,10 +40,15 @@ class Ship{
     }
     
     update(progress) {
+        //console.log(this.angle+" desiredA: "+this.angleTarget);
+        
+        if(this.angle == this.angleTarget && this.attacking){
+            this.fire(BULLET);
+        }
         if(this.angle != this.angleTarget){//First rotate
             let direction = -1;
             let fullangle = false;
-            if(this.angleTarget > this.angle){
+            if(this.angleTarget > this.angle){  
                 if((this.angleTarget - this.angle) < (360 - this.angleTarget + this.angle)){
                     direction = 1;
                 }else{
@@ -79,35 +87,54 @@ class Ship{
                 this.angle += (direction * this.angleSpeed);
             }else{
                 this.angle = this.angleTarget;
+                //console.log(fullangle);
             }
             
             if(this.angle > 360){
                 this.angle = this.angle % 360;
             }
-        }else if(!this.pos.equal(this.targetField.centerPos)){
-            if(this.attacking){
-                this.fire(BULLET);
-                this.attacking = false;
-            }
-            if(this.field.isNeighbor(this.targetField)){
-                if(this.targetField.isSettled()){
-                    this.moveTo(game.getFieldFromPos(this.targetField.findNearestFiedlPos(this.angle)));
+        }else if(!this.pos.equal(this.temporaryTargetField.centerPos)){//If not on right position...
+            //console.log("this.field.getFieldX"+this.field.getFieldX() + " "+this.field.getFieldY());
+            if(this.field.isNeighbor(this.temporaryTargetField)){//If close to right position
+                //console.log("nejbrrrrrrr??????");
+                if(this.temporaryTargetField.isSettled()){
+                    //this.moveTo(game.getFieldFromPos(this.targetField.findNearestFiedlPos(this.angle)));
+                    this.moveTo(this.targetField.findNearestField(this.field));
+                    //console.log("presmerovavam(" + this.id + "): ");
+                    //this.targetField.printFieldShiftedXY();
+                    //console.log("NEW : this.field.getFieldX"+this.targetField.getFieldX() + " "+this.targetField.getFieldY());
                 }
             }else{
                 
 
             }
-            this.pos = new Triangle(this.pos, this.targetField.centerPos).getNewPosBySpeed(this.accelerationSpeed);
-            this.imgPosition = this.getImgPos();
-            this.boundaries.moveToPos(this.imgPosition);
+            this.pos = new Triangle(this.pos, this.temporaryTargetField.centerPos).getNewPosBySpeed(this.accelerationSpeed);
+            this.imgPos = this.getImgPos();
+            this.boundaries.moveToPos(this.imgPos);
             if(!this.field.shipStillOnField(this)){
                 this.field = game.getFieldFromXY(this.pos.x, this.pos.y);
-                if(this.field == this.targetField){
+                //console.log(this.field.settledByShip);
+                if(this.field == this.temporaryTargetField){
+                    //console.log("hotovo" + this.field.pos.x + " "+this.field.pos.y+ " B" + this.field.settledByShip);
                     this.moving=false;
+                    //console.log("settld?" + this.field.settledByShip);
                     this.field.settledByShip = this;
+                    console.log("obsazeno na:");
+                    this.field.printFieldShiftedXY();
                 }
             }
             
+        }else{
+            if(this.id == 0){//only for testing
+            }
+            if(this.field.isSettled() && this.field.settledByShip != this){
+                this.moveTo(this.targetField.findNearestField(this.field));
+                console.log("jsem na obsazenem a proto presmerovavam(" + this.id + "): ");
+                this.targetField.printFieldShiftedXY();
+            }else if(this.field.isEmpty()){
+                this.moving=false;
+                this.field.settledByShip = this;
+            }
         }
         for(let i = 0; i < this.missileArray.length; i++){
             //if(!this.missileArray[i].update(progress)){
@@ -115,20 +142,24 @@ class Ship{
                 //this.missileArray.splice(i, 1);
             //}
             this.missileArray[i].update(progress);
+            if(this.attackedTarget.boundaries.containsPoint(this.missileArray[i].pos)){
+                console.log("truuuuuuu" + this.attackedTarget.id);
+            }
         }
     }
 
-    draw(){
-        if(!this.img_loaded){
+    draw(ctx){
+        if(!this.img_loaded || ctx===undefined){
             return;
         }
-        game.ctx.save();
-        game.ctx.translate(this.pos.x,this.pos.y);
-        game.ctx.rotate(this.angle * Math.PI/180);
-        game.ctx.translate(-this.pos.x,-this.pos.y);
-        game.ctx.drawImage(this.img, this.imgPosition.x, this.imgPosition.y, this.dim.w*game.zoom, this.dim.h*game.zoom);
+        
+        ctx.save();
+        ctx.translate(this.pos.x,this.pos.y);
+        ctx.rotate(this.angle * Math.PI/180);
+        ctx.translate(-this.pos.x,-this.pos.y);
+        ctx.drawImage(this.img, this.imgPos.x, this.imgPos.y, this.dim.w*game.zoom, this.dim.h*game.zoom);
      
-        game.ctx.restore();
+        ctx.restore();
 
         /*
         //Img and boundaries
@@ -140,37 +171,44 @@ class Ship{
 
         //scope draw
         if(this.player.relation == ME){
-            game.ctx.strokeStyle = "blue";
-            game.ctx.fillStyle = "blue";
+            ctx.strokeStyle = "blue";
+            ctx.fillStyle = "blue";
         }else if(this.player.relation == FRIEND){
-            game.ctx.strokeStyle = "yellow";
-            game.ctx.fillStyle = "yellow";
+            ctx.strokeStyle = "yellow";
+            ctx.fillStyle = "yellow";
         }else if(this.player.relation == ENEMY){
-            game.ctx.strokeStyle = "red";
-            game.ctx.fillStyle = "red";
+            ctx.strokeStyle = "red";
+            ctx.fillStyle = "red";
         }
         
-        game.ctx.beginPath();
-        game.ctx.arc(this.pos.x, this.pos.y, this.scope, 0, 2 * Math.PI);
-        game.ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, this.scope, 0, 2 * Math.PI);
+        ctx.fill();
 
         if(this.showHealth){
             let healthBarHeight = 5;
             let healthZoom = 0.5;
-            game.ctx.fillStyle = "red";
-            game.ctx.fillRect(this.pos.x-this.dim.w/(2/healthZoom),this.pos.y, this.maxHealth*healthZoom, healthBarHeight);
-            game.ctx.fillStyle = "green";
-            game.ctx.fillRect(this.pos.x-this.dim.w/(2/healthZoom),this.pos.y, this.health*healthZoom, healthBarHeight);
+            ctx.fillStyle = "red";
+            ctx.fillRect(this.pos.x-this.dim.w/(2/healthZoom),this.pos.y, this.maxHealth*healthZoom, healthBarHeight);
+            ctx.fillStyle = "green";
+            ctx.fillRect(this.pos.x-this.dim.w/(2/healthZoom),this.pos.y, this.health*healthZoom, healthBarHeight);
         }
 
         for(let i = 0; i < this.missileArray.length; i++){
             this.missileArray[i].draw(game.ctx);
             
         }
+
+        if(this.showId){
+            ctx.fillStyle = "rgb(50,255,50)";
+            ctx.font = "20px Arial";
+            ctx.fillText("ID: " + this.id, this.pos.x, this.pos.y);
+        }
     }
 
     fire(missile_type){
         if(this.canFire){
+            console.log("FIRING!");
             let missile = null;
             switch(missile_type){
                 case BULLET:
@@ -182,11 +220,11 @@ class Ship{
             }
             
             this.missileArray.push(missile);
+            this.canFire = false;
+            setTimeout(this.recharge, 2000, this);
         }else{
             console.log("CANNOT FIRE!");
         }
-        this.canFire = false;
-        setTimeout(this.recharge, 2000, this);
     }
 
     recharge(ship){
@@ -195,17 +233,25 @@ class Ship{
 
     moveTo(field){
         if(field.isSettled()){//are we fighting??
-            this.attackedTarget = field.settledByShip;
+            //this.attackedTarget = field.settledByShip; // <-TOHLE JE BLBOST!
         }else{
 
         }
-        this.targetField = field;
-        let t = new Triangle(this.pos, this.targetField.centerPos);
-        this.angleTarget = t.angleA;
-        if(this.field != this.targetField){
+        this.temporaryTargetField = field;
+        let t = new Triangle(this.pos, this.temporaryTargetField.centerPos);
+        if(this.temporaryTargetField != this.field){
+            this.angleTarget = t.angleA;
+        }
+        if(this.field != this.temporaryTargetField && this.field.settledByShip == this){
             this.moving = true;
             this.field.removeTargetShip();
         }
+    }
+
+    changeTargetAndMove(field){
+        this.targetField = field;
+        this.moveTo(field);
+
     }
 
     getImgPos(){

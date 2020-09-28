@@ -7,6 +7,7 @@ class Field{
         this.boundaries = new GameRectangle(this.pos, this.dim);
         this.settledByShip = null;
         this.size = size;
+        this.showXY = true;
         
        //clog(this.pos.x, this.pos.y, y);
     }
@@ -18,10 +19,18 @@ class Field{
     draw(ctx){
         ctx.strokeStyle = "yellow";
         ctx.strokeRect(this.pos.x, this.pos.y, this.dim.w, this.dim.h);
+        if(this.showXY){
+            ctx.fillStyle = "rgb(80,80,80)";
+            ctx.fillText(this.getFieldShiftedX() + ", " + this.getFieldShiftedY(),this.centerPos.x, this.centerPos.y);
+        }
     }
 
     isSettled(){
         return (this.settledByShip != null);
+    }
+
+    isEmpty(){
+        return !this.isSettled();
     }
 
     getShip(){
@@ -30,6 +39,40 @@ class Field{
 
     removeTargetShip(){
         this.settledByShip = null;
+    }
+
+    getFieldDistance(field){
+        let a = this.pos.x - field.pos.x;
+        let b = this.pos.y - field.pos.y;
+        return Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2));
+    }
+    findNearestField(fromField){//ZEFEKTIVNIT!! Ted se prepocitava znovu pri zvetseni okruhu (prvniho for)
+        let emptyFieldsArray = new Array();
+        let nearestField = null;
+        let minDistance = -1;
+        for(let size = 3; nearestField == null; size +=2){
+            //console.log("cyclus size: " + size);
+            for(let i = 0; i < size; i++){
+                for(let j = 0; j < size; j++){
+                    let tmp_field = game.getFieldFromXY(this.centerPos.x+(1-i)*this.size, this.centerPos.y+(1-j)*this.size);
+                    if((i == (size-1)/2 && j == (size-1)/2) || tmp_field == null){
+                        continue;
+                    }
+                    if(tmp_field.isEmpty()){
+                        emptyFieldsArray.push(tmp_field)
+                        let dist = tmp_field.getFieldDistance(fromField);
+                        if(minDistance == -1 || dist < minDistance){
+                            minDistance = dist;
+                            nearestField = tmp_field;
+                        }
+                        //console.log(minDistance);
+                    }
+                }
+            }
+        }
+        //console.log(emptyFieldsArray.length);
+        //console.log("null?:" + nearestField);
+        return nearestField;
     }
 
     findNearestFiedlPos(angle){
@@ -103,5 +146,28 @@ class Field{
         return true;
     }
 
+    getFieldX(){
+        return this.pos.x / this.size;
+    }
+
+    getFieldY(){
+        return this.pos.y / this.size;
+    }
+
+    printFieldXY(){
+        console.log("FIELD X,Y: " + this.getFieldX() + ", " + this.getFieldY());
+    }
+
+    getFieldShiftedX(){
+        return (this.pos.x / this.size) + 1;
+    }
+
+    getFieldShiftedY(){
+        return (this.pos.y / this.size) + 1;
+    }
+
+    printFieldShiftedXY(){
+        console.log("FIELD SHIFTED X,Y: " + this.getFieldShiftedX() + ", " + this.getFieldShiftedY());
+    }
 }
 

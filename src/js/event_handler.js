@@ -7,6 +7,7 @@ class GameEventHandler{
         canvas.addEventListener('mousedown', this.mouseDown);
         canvas.addEventListener('mouseup', this.mouseUp);
         canvas.addEventListener('mousemove', this.mouseMove);
+        document.body.addEventListener("keydown", this.keyDown);
 
         this.leftMouseBtnDown = false;
         this.rightMouseBtnDown = false;
@@ -14,6 +15,7 @@ class GameEventHandler{
         this.mouseX = 0;
         this.mouseY = 0;
     }
+
     leftClick(event) {
         //prnt(event.offsetX, event.offsetY);
         game.leftClick(event);
@@ -52,6 +54,14 @@ class GameEventHandler{
             game.mouseDrag(event);
         }else{
             game.mouseMove(event);
+        }
+    }
+      
+    keyDown(event) {
+        if(event.code == "KeyA"){
+            game.selectAll();
+        }else{
+            console.log(event.code);
         }
     }
 

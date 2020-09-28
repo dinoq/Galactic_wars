@@ -77,7 +77,7 @@ class Triangle{
                 this.angleA = 180;
                 this.sideB = this.sideA;
             }else{
-                console.log("?sssssss!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?");
+                //console.log("sideA(0): " + this.sideA + ", sideC(0): " + this.sideC);
             }
             
         }else if(this.sideA > 0 && this.sideC > 0){
@@ -133,6 +133,15 @@ class Triangle{
         }else{
             return this.pos2;
         }
+    }
+
+    draw(ctx){        
+        ctx.beginPath();
+        ctx.moveTo(this.pos1.x, this.pos1.y);
+        ctx.lineTo(this.pos2.x, this.pos2.y);
+        ctx.lineTo(this.pos2.x, this.pos1.y);
+        ctx.lineTo(this.pos1.x, this.pos1.y);
+        ctx.stroke();
     }
 }
 
