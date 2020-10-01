@@ -114,11 +114,6 @@ class Game{
         for(let i = 0; i < this.fields.length; i++){
             this.fields[i].draw(this.ctx);
         }
-
-        let f_size = 12;
-        this.ctx.font=f_size + "px Verdana";        
-        this.ctx.fillStyle = "red";
-        this.ctx.fillText("FPS: " + parseInt(this.fps), 10, f_size);
         
         let i = 0;
         for(; i < this.ships.length; i++){
@@ -131,7 +126,14 @@ class Game{
             this.ctx.drawImage(this.cursors[this.cursorType], this.eventHandler.mouseX, this.eventHandler.mouseY, 80/curZoom, 80/curZoom); 
         }
 
+        //Resources bar
         this.resBar.draw(this.ctx);
+
+        //FPS
+        let f_size = 20;
+        this.ctx.font=f_size + "px Verdana";        
+        this.ctx.fillStyle = "red";
+        this.ctx.fillText("FPS: " + parseInt(this.fps), 10, f_size+5);
     }
 
     loop(timestamp) {
@@ -300,6 +302,7 @@ class Game{
 /*
 Zapojit do update progress
 draw používat přes ctx (bez game.)
+odstranovani strel ktere nezasahly cil (napr. odstraneni po urcite dobe...)
 
 todo priority:
 fullscreen btn
